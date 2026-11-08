@@ -33,10 +33,11 @@ het getal in VERSIE (bijvoorbeeld v1 naar v2).
 ## Let op
 - Alle gegevens staan lokaal in de browser van je telefoon. Maak af en toe een back-up
   (Instellingen > Back-up opslaan). Browsergegevens wissen verwijdert je rooster.
-- Deze webapp kan geen popupmeldingen plannen en geen twee-richtingssync met Google Agenda doen.
-  Per dienst is er een knop "＋Agenda" die de dienst voorgevuld in Google Agenda opent, en je kunt
-  de periode als CSV exporteren om in Google Agenda te importeren. Voor de dagelijkse melding
-  "Heb je gewerkt?" en echte sync gebruik je de Android-app (werkplanner-android.zip).
+- Deze webapp kan geen popupmeldingen plannen. Automatische sync met Google Agenda kan wel: zie GOOGLE-AGENDA-KOPPELEN.md.
+  Daarnaast is er per dienst een knop "＋Agenda" en kun je de periode als CSV exporteren.
+
+## Google Agenda automatisch synchroniseren
+Zie GOOGLE-AGENDA-KOPPELEN.md (eenmalig een eigen Client-ID aanmaken bij Google, ca. 10 minuten).
 
 ## Back-up naar Google Drive of OneDrive
 - Instellingen > "Delen: Drive of OneDrive" opent het deelmenu van je telefoon. Kies daar Google Drive

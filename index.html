@@ -64,6 +64,13 @@ p.note{font-size:12px;color:var(--mu);margin:8px 0 0}
   </div>
   <div class="card"><b>Registraties in deze periode</b><div id="list"></div></div>
   <div class="card" id="saldo"></div>
+  <div class="card" id="gcard"><b>Google Agenda (automatisch)</b>
+    <p class="note" style="margin-top:4px">Koppel eenmalig je Google-account (uitleg: GOOGLE-AGENDA-KOPPELEN.md). Daarna worden wijzigingen automatisch naar Google Agenda geschreven. Wijzigingen die je in Google Agenda doet, kun je hier overnemen.</p>
+    <label>Google Client-ID</label><input type="text" id="gcid" placeholder="xxxx.apps.googleusercontent.com" autocomplete="off">
+    <select id="gsel" class="hide" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--ln);background:var(--bg);color:var(--tx);font:inherit;margin-top:8px"></select>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button id="g1">Verbinden / agenda kiezen</button><button id="g2">Nu synchroniseren</button><button id="g3">Wijzigingen ophalen</button></div>
+    <label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:14px;color:var(--tx)"><input type="checkbox" id="gauto" checked> Automatisch synchroniseren bij elke wijziging</label>
+    <p class="note" id="gm"></p><button id="g4" class="pri hide">Wijzigingen overnemen</button></div>
   <div class="card"><b>Exporteren</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button id="e1">Google Agenda (CSV)</button><button id="e2">Excel-overzicht (CSV)</button></div><p class="note" id="exm">Exporteert de getoonde periode. Importeren in Google Agenda: calendar.google.com, Instellingen, Importeren en exporteren.</p></div>
 </div>
 
@@ -93,7 +100,7 @@ p.note{font-size:12px;color:var(--mu);margin:8px 0 0}
     <div class="three"><div><label>Start</label><input type="time" id="as"></div><div><label>Eind</label><input type="time" id="ae"></div><div><label>Pauze vanaf</label><input type="time" id="ab"></div></div>
     <div style="display:flex;gap:8px;margin-top:10px"><button id="sy" style="flex:1">✓ Gewerkt volgens planning</button><button id="sx" style="flex:1">✗ Niet gewerkt</button></div>
   </div>
-  <div id="fAbs" class="hide"><label>Uren op deze dag</label><input type="number" id="fh" min="0" step="0.25"></div>
+  <div id="fAbs" class="hide"><div class="three"><div><label>Start</label><input type="time" id="xs"></div><div><label>Eind</label><input type="time" id="xe"></div><div><label>Uren</label><input type="number" id="fh" min="0" step="0.25"></div></div><p class="note">Vul start en eind in voor deze dag, dan worden de uren berekend. Of vul alleen de uren in.</p></div>
   <div style="display:flex;gap:8px;margin-top:12px">
     <a class="btn" id="gc" target="_blank" rel="noopener" style="flex:1;text-align:center">Google Agenda</a>
     <button id="rp" style="flex:1">Herhaal 4 wkn</button><button class="pri" id="ok" style="flex:1">Klaar</button>
@@ -143,7 +150,9 @@ function cfg(k){
   var d=S.days[k];if(!d)return null;
   if(isShift(d.t)){var b=S.set[d.t];return{t:d.t,s:d.s||b.s,e:d.e||b.e,bs:d.bs||b.bs,a:d.a||null,st:d.st}}
   var ty=typ(d.t)||{paid:false,h:0};
-  return{t:d.t,abs:true,h:d.h!=null?d.h:ty.h,paid:ty.paid}
+  var h=d.h!=null?d.h:ty.h;
+  if(d.s&&d.e){var a1=d.s.split(":"),b1=d.e.split(":");h=(((+b1[0]*60+ +b1[1])-(+a1[0]*60+ +a1[1])+1440)%1440)/60}
+  return{t:d.t,abs:true,h:h,paid:ty.paid,s:d.s,e:d.e}
 }
 // Rekent per minuut: pauze eraf, hoogste toeslag (feestdag 100% > zondag/nacht 50%)
 function calc(k,c,act){
@@ -172,7 +181,9 @@ function calc(k,c,act){
 function gcal(k,c,r){
   function f(x){return x.getFullYear()+pad(x.getMonth()+1)+pad(x.getDate())+"T"+pad(x.getHours())+pad(x.getMinutes())+"00"}
   var nm=(typ(c.t)||{}).n||c.t,dt;
-  if(c.abs){var d=pk(k);dt=k.split("-").join("")+"/"+key(addD(d,1)).split("-").join("")}else dt=f(r.st)+"/"+f(r.en);
+  if(c.abs&&!(c.s&&c.e)){var d=pk(k);dt=k.split("-").join("")+"/"+key(addD(d,1)).split("-").join("")}
+  else if(c.abs){var d2=pk(k),q=c.s.split(":"),w=c.e.split(":"),x1=new Date(d2.getFullYear(),d2.getMonth(),d2.getDate(),+q[0],+q[1]),x2=new Date(d2.getFullYear(),d2.getMonth(),d2.getDate(),+w[0],+w[1]);if(x2<=x1)x2=new Date(x2.getTime()+864e5);dt=f(x1)+"/"+f(x2)}
+  else dt=f(r.st)+"/"+f(r.en);
   return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent("Dienst "+nm)+"&dates="+dt+"&ctz=Europe%2FAmsterdam";
 }
 
@@ -193,7 +204,7 @@ function render(){
     if(c){
       if(c.abs){if(c.paid)V+=p.tot}else{W+=p.tot;Wa+=a.tot;N50+=a.n50;N100+=a.n100}
       P+=p.pay;Pa+=a.pay;
-      var tx=c.abs?c.h+" u":c.s+"–"+c.e+" · "+hm(p.tot)+" u"+(c.a||c.st==="niet"?" (werkelijk "+hm(a.tot)+")":"");
+      var tx=c.abs?(c.s&&c.e?c.s+"–"+c.e+" · ":"")+hm(c.h*60)+" u":c.s+"–"+c.e+" · "+hm(p.tot)+" u"+(c.a||c.st==="niet"?" (werkelijk "+hm(a.tot)+")":"");
       L+='<div class="row"><span><b style="color:'+colOf(c.t)+'">'+c.t+"</b> "+DN[d.getDay()]+" "+fd(d)+" · wk "+isoWk(d)+"<br><small>"+tx+"</small>"+(ov?'<br><span class="warn">⚠ overlapt met vorige dienst</span>':"")+'</span><span style="text-align:right">'+eur(p.pay)+'<br><a href="'+gcal(k,c,p)+'" target="_blank" rel="noopener">＋Agenda</a></span></div>';
     }
   }
@@ -239,18 +250,18 @@ function fillSheet(){
   Array.prototype.forEach.call(pc.children,function(b){b.onclick=function(){var t=b.getAttribute("data-t");if(t==="Vrij")delete S.days[sel];else S.days[sel]={t:t};S.last=t;save();go(key(addD(pk(sel),1)))}});
   $("fShift").classList.toggle("hide",!c||c.abs);$("fAbs").classList.toggle("hide",!c||!c.abs);
   if(c&&!c.abs){$("fs").value=c.s;$("fe").value=c.e;$("fb").value=c.bs;var a=c.a||{};$("as").value=a.s||"";$("ae").value=a.e||"";$("ab").value=a.b||""}
-  if(c&&c.abs)$("fh").value=c.h;
+  if(c&&c.abs){$("xs").value=c.s||"";$("xe").value=c.e||"";$("fh").value=c.h}
   $("sy").classList.toggle("sel",!!c&&c.st==="ja");$("sx").classList.toggle("sel",!!c&&c.st==="niet");
   var g=$("gc");if(c){g.href=gcal(sel,c,calc(sel,c,false));g.style.opacity=1}else{g.removeAttribute("href");g.style.opacity=.4}
 }
-function edit(){
+function edit(ev){
   var d=S.days[sel];if(!d)return;
   if(isShift(d.t)){d.s=$("fs").value||undefined;d.e=$("fe").value||undefined;d.bs=$("fb").value||undefined;
     if($("as").value||$("ae").value||$("ab").value)d.a={s:$("as").value||undefined,e:$("ae").value||undefined,b:$("ab").value||undefined};else delete d.a;if(d.a&&d.st==="niet")d.st="ja"}
-  else d.h=$("fh").value===""?undefined:+$("fh").value;
-  save();render();var c=cfg(sel);$("gc").href=gcal(sel,c,calc(sel,c,false));
+  else{if(ev&&ev.target&&ev.target.id==="fh"){d.s=undefined;d.e=undefined;$("xs").value="";$("xe").value="";d.h=$("fh").value===""?undefined:+$("fh").value}else{d.s=$("xs").value||undefined;d.e=$("xe").value||undefined}}
+  save();render();var c=cfg(sel);if(c.abs&&c.s&&c.e)$("fh").value=c.h;$("gc").href=gcal(sel,c,calc(sel,c,false));
 }
-["fs","fe","fb","as","ae","ab","fh"].forEach(function(i){$(i).onchange=edit});
+["fs","fe","fb","as","ae","ab","fh","xs","xe"].forEach(function(i){$(i).onchange=edit});
 $("sy").onclick=function(){var d=S.days[sel];if(!d||!isShift(d.t))return;d.st="ja";delete d.a;save();fillSheet();render()};
 $("sx").onclick=function(){var d=S.days[sel];if(!d||!isShift(d.t))return;d.st="niet";save();fillSheet();render()};
 $("ok").onclick=function(){$("sh").classList.remove("open")};
@@ -305,12 +316,13 @@ function cs(a,sep){return a.map(function(x){return '"'+String(x).replace(/"/g,'"
 function eachDay(f){var R=prange(cp.y,cp.n);for(var d=new Date(R.st);d<=R.en;d=addD(d,1)){var k=key(d),c=cfg(k);if(c)f(d,k,c)}}
 $("e1").onclick=function(){var L=["Subject,Start Date,Start Time,End Date,End Time,All Day Event,Description,Location"];
   eachDay(function(d,k,c){var nm=(typ(c.t)||{}).n||c.t,p=calc(k,c,false);
-    if(c.abs)L.push(cs(["Dienst "+nm,d12(d),"",d12(d),"","True","",""],","));
+    if(c.abs&&!(c.s&&c.e))L.push(cs(["Dienst "+nm,d12(d),"",d12(d),"","True","",""],","));
+    else if(c.abs){var ed=c.e<=c.s?addD(d,1):d;L.push(cs(["Dienst "+nm,d12(d),t12(new Date(2000,0,1,+c.s.slice(0,2),+c.s.slice(3))),d12(ed),t12(new Date(2000,0,1,+c.e.slice(0,2),+c.e.slice(3))),"False","",""],","))}
     else L.push(cs(["Dienst "+c.t,d12(p.st),t12(p.st),d12(p.en),t12(p.en),"False","Pauze vanaf "+c.bs,""],","))});
   dl("werkrooster-periode-"+cp.n+"-"+cp.y+".csv",L.join("\r\n"),false)};
 $("e2").onclick=function(){var L=[cs(["Datum","Week","Dienst","Start","Eind","Uren gepland","Uren werkelijk","Uren 50%","Uren 100%","Bruto gepland","Bruto werkelijk"],";")],n=function(x){return x.toFixed(2).replace(".",",")};
   eachDay(function(d,k,c){var p=calc(k,c,false),a=calc(k,c,true);
-    L.push(cs([k,isoWk(d),c.t,c.abs?"":c.s,c.abs?"":c.e,hm(p.tot),hm(a.tot),hm(a.n50),hm(a.n100),n(p.pay),n(a.pay)],";"))});
+    L.push(cs([k,isoWk(d),c.t,c.s||"",c.e||"",hm(p.tot),hm(a.tot),hm(a.n50),hm(a.n100),n(p.pay),n(a.pay)],";"))});
   dl("uren-periode-"+cp.n+"-"+cp.y+".csv",L.join("\r\n"),true)};
 // ---- Rapporten: week, 4 weken (betaalperiode), kwartaal of eigen periode
 var rp={k:"week",off:0,f:"",t:""};
@@ -375,10 +387,158 @@ $("rt").onchange=function(){rp.f=$("rf").value;rp.t=$("rt").value;report()};
 $("rx").onclick=function(){
  var R=rrange(),o=agg(R),n=function(x){return x.toFixed(2).replace(".",",")},
   L=[cs(["Datum","Week","Dienst","Start","Eind","Uren gepland","Uren werkelijk","Uren 50%","Uren 100%","Bruto gepland","Bruto werkelijk"],";")];
- o.rows.forEach(function(r){var c=r[2];L.push(cs([r[1],isoWk(r[0]),c.t,c.abs?"":c.s,c.abs?"":c.e,hm(r[3].tot),hm(r[4].tot),hm(r[4].n50),hm(r[4].n100),n(r[3].pay),n(r[4].pay)],";"))});
+ o.rows.forEach(function(r){var c=r[2];L.push(cs([r[1],isoWk(r[0]),c.t,c.s||"",c.e||"",hm(r[3].tot),hm(r[4].tot),hm(r[4].n50),hm(r[4].n100),n(r[3].pay),n(r[4].pay)],";"))});
  L.push(cs(["TOTAAL","","","","",hm(o.W),hm(o.Wa),hm(o.N50),hm(o.N100),n(o.P),n(o.Pa)],";"));
  dl("rapport-"+key(R.s)+"_"+key(R.e)+".csv",L.join("\r\n"),true,"rxm");
 };
+
+(function(){
+ if(window.Android)return;
+ var tok=null,exp=0,tc=null,after=null,pend=null,t4=null,busy=false,_s4=save,
+  SC="https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+  BASE="https://www.googleapis.com/calendar/v3/";
+ function G(){return S.gcal||(S.gcal={})}
+ function gm(t){$("gm").textContent=t}
+ function hh(ms){var d=new Date(ms);return pad(d.getHours())+":"+pad(d.getMinutes())}
+ function valid(){return !!tok&&Date.now()<exp-60000}
+ function range(){return[addD(new Date(),-7),addD(new Date(),120)]}
+ // ---- Inloggen met Google (token-model, geen server nodig)
+ function loadGIS(cb){
+  if(window.google&&google.accounts&&google.accounts.oauth2){cb();return}
+  var sc=document.createElement("script");sc.src="https://accounts.google.com/gsi/client";sc.async=true;sc.onload=cb;
+  sc.onerror=function(){gm("Google-inlog kon niet worden geladen. Controleer je internetverbinding.")};
+  document.head.appendChild(sc);
+ }
+ function initTc(){
+  if(!G().client||!(window.google&&google.accounts&&google.accounts.oauth2))return;
+  tc=google.accounts.oauth2.initTokenClient({client_id:G().client,scope:SC,
+   callback:function(r){if(r.error){gm("Inloggen mislukt: "+r.error);return}
+    tok=r.access_token;exp=Date.now()+(+r.expires_in||3600)*1000;G().granted=true;_s4();var f=after;after=null;if(f)f()},
+   error_callback:function(){gm("Inloggen is geannuleerd of door de browser geblokkeerd. Tik nogmaals.")}});
+ }
+ function prep(){if(G().client)loadGIS(initTc)}
+ function auth(cb){
+  if(valid()){cb();return}
+  if(!G().client){gm("Vul eerst je Google Client-ID in.");return}
+  var go=function(){after=cb;tc.requestAccessToken({prompt:G().granted?"":"consent"})};
+  if(!tc){loadGIS(function(){initTc();if(tc)go()});return}
+  go();
+ }
+ async function api(m,p,b){
+  var r;
+  for(var t=0;t<3;t++){
+   r=await fetch(BASE+"calendars/"+encodeURIComponent(G().cid)+p,{method:m,headers:{Authorization:"Bearer "+tok,"Content-Type":"application/json"},body:b?JSON.stringify(b):undefined});
+   if(r.status===401)tok=null;
+   if(r.status===429||(r.status===403&&t<2)){await new Promise(function(f){setTimeout(f,800*(t+1))});continue}
+   return r;
+  }
+  return r;
+ }
+ // ---- Afspraak opbouwen uit een dag in de app
+ function body(k,c,p){
+  var d=pk(k),ad=!!c.abs&&!(c.s&&c.e),s,e,ti="Dienst "+((typ(c.t)||{}).n||c.t);
+  if(ad){s=Date.UTC(d.getFullYear(),d.getMonth(),d.getDate());e=s+864e5}
+  else if(c.abs){var a1=c.s.split(":"),b1=c.e.split(":");s=new Date(d.getFullYear(),d.getMonth(),d.getDate(),+a1[0],+a1[1]).getTime();e=new Date(d.getFullYear(),d.getMonth(),d.getDate(),+b1[0],+b1[1]).getTime();if(e<=s)e+=864e5}
+  else{s=p.st.getTime();e=p.en.getTime()}
+  var b={summary:ti,description:"Mijn Werkplanner",extendedProperties:{private:{app:"werkplanner",day:k}}};
+  if(ad){b.start={date:k};b.end={date:key(addD(d,1))}}
+  else{b.start={dateTime:new Date(s).toISOString(),timeZone:"Europe/Amsterdam"};b.end={dateTime:new Date(e).toISOString(),timeZone:"Europe/Amsterdam"}}
+  return{b:b,s:s,e:e,ad:ad,ti:ti};
+ }
+ // ---- App naar agenda. Ongewijzigde afspraken worden overgeslagen, zodat een wijziging
+ // die je in Google Agenda deed niet wordt overschreven voordat je haar hebt gezien.
+ async function push(from,to){
+  if(busy)return{n:0,x:0};
+  busy=true;
+  try{
+   var n=0,x=0,m=G().map=G().map||{};
+   for(var d=new Date(from);d<=to;d=addD(d,1)){
+    var k=key(d),c=cfg(k),ev=m[k];
+    if(c){
+     var o=body(k,c,calc(k,c,false));
+     if(ev&&ev.s===o.s&&ev.e===o.e&&ev.ad===o.ad&&ev.ti===o.ti)continue;
+     var r;
+     if(ev){r=await api("PATCH","/events/"+ev.id,o.b);if(r.status===404||r.status===410)r=await api("POST","/events",o.b)}
+     else r=await api("POST","/events",o.b);
+     if(!r.ok)throw new Error("API "+r.status);
+     var j=await r.json();m[k]={id:j.id,s:o.s,e:o.e,ad:o.ad,ti:o.ti};n++;
+    }else if(ev){
+     var r2=await api("DELETE","/events/"+ev.id);
+     if(r2.ok||r2.status===404||r2.status===410){delete m[k];x++}else throw new Error("API "+r2.status);
+    }
+   }
+   _s4();
+   return{n:n,x:x};
+  }finally{busy=false}
+ }
+ // ---- Agenda naar app (alleen tonen; overnemen na bevestiging)
+ async function pull(silent){
+  var m=G().map||{};
+  if(!Object.keys(m).length){if(!silent)gm("Nog geen diensten in de agenda gezet.");return}
+  var tmin=addD(new Date(),-30),tmax=addD(new Date(),180);
+  var r=await api("GET","/events?singleEvents=true&showDeleted=true&maxResults=2500&privateExtendedProperty="+encodeURIComponent("app=werkplanner")+"&timeMin="+encodeURIComponent(tmin.toISOString())+"&timeMax="+encodeURIComponent(tmax.toISOString()));
+  if(!r.ok)throw new Error("API "+r.status);
+  var j=await r.json(),by={},ch=[],tx=[];
+  (j.items||[]).forEach(function(e){by[e.id]=e});
+  for(var k in m){
+   var mm=m[k],ev=by[mm.id];
+   if(!ev){
+    if(k<key(tmin)||k>key(tmax))continue;
+    var g=await api("GET","/events/"+mm.id);
+    if(g.status===404||g.status===410)ev={status:"cancelled"};else if(g.ok)ev=await g.json();else continue;
+   }
+   if(ev.status==="cancelled"){ch.push({k:k,del:true});tx.push(k+": verwijderd in agenda")}
+   else if(!mm.ad&&ev.start&&ev.start.dateTime){var s=Date.parse(ev.start.dateTime),e=Date.parse(ev.end.dateTime);
+    if(s!==mm.s||e!==mm.e){ch.push({k:k,s:s,e:e});tx.push(k+": nu "+hh(s)+"–"+hh(e))}}
+  }
+  if(!ch.length){pend=null;$("g4").classList.add("hide");if(!silent)gm("Geen wijzigingen in Google Agenda.");return}
+  pend=ch;gm("Wijzigingen in Google Agenda gevonden: "+tx.join(" · "));$("g4").classList.remove("hide");
+ }
+ async function syncNow(){
+  try{var r=range(),o=await push(r[0],r[1]);gm(o.n+" afspraken bijgewerkt, "+o.x+" verwijderd.");await pull(true);$("g2").classList.remove("pri")}
+  catch(e){gm("Synchroniseren mislukt ("+e.message+").")}
+ }
+ async function autoPush(){
+  var g=G();if(!g.cid||g.auto===false||!g.client)return;
+  if(!valid()){gm("Er staan wijzigingen klaar. Tik op Nu synchroniseren om ze naar Google Agenda te sturen.");$("g2").classList.add("pri");return}
+  try{var r=range(),o=await push(r[0],r[1]);if(o.n||o.x)gm("Automatisch bijgewerkt in Google Agenda om "+hh(Date.now())+": "+o.n+" gewijzigd, "+o.x+" verwijderd.")}
+  catch(e){gm("Synchroniseren mislukt ("+e.message+").")}
+ }
+ save=function(){_s4();clearTimeout(t4);t4=setTimeout(autoPush,3000)};
+ // ---- Knoppen
+ $("gcid").value=G().client||"";
+ $("gcid").onchange=function(){G().client=$("gcid").value.trim();tc=null;tok=null;_s4();prep()};
+ $("gauto").checked=G().auto!==false;
+ $("gauto").onchange=function(){G().auto=$("gauto").checked;_s4();if(G().auto)autoPush()};
+ $("g1").onclick=function(){
+  G().client=$("gcid").value.trim();_s4();
+  auth(async function(){
+   try{
+    var r=await fetch(BASE+"users/me/calendarList?minAccessRole=writer",{headers:{Authorization:"Bearer "+tok}});
+    if(!r.ok)throw new Error("API "+r.status);
+    var list=(await r.json()).items||[],sel=$("gsel");
+    sel.innerHTML="";
+    var o0=document.createElement("option");o0.value="";o0.textContent="Kies een agenda…";sel.appendChild(o0);
+    list.forEach(function(c,i){var o=document.createElement("option");o.value=i;o.textContent=c.summary||c.id;if(G().cid===c.id)o.selected=true;sel.appendChild(o)});
+    sel.classList.remove("hide");
+    sel.onchange=function(){if(sel.value==="")return;var id=list[+sel.value].id;if(G().cid!==id)G().map={};G().cid=id;_s4();gm("Agenda gekozen. Even synchroniseren…");syncNow()};
+    gm("Verbonden. Kies de agenda waarin de diensten komen.");
+   }catch(e){gm("Verbinden mislukt ("+e.message+").")}
+  });
+ };
+ $("g2").onclick=function(){if(!G().cid){gm("Kies eerst een agenda via Verbinden.");return}auth(syncNow)};
+ $("g3").onclick=function(){if(!G().cid){gm("Kies eerst een agenda via Verbinden.");return}auth(async function(){try{await pull(false)}catch(e){gm("Ophalen mislukt ("+e.message+").")}})};
+ $("g4").onclick=function(){
+  if(!pend)return;var m=G().map;
+  pend.forEach(function(x){
+   if(x.del){delete S.days[x.k];delete m[x.k]}
+   else if(S.days[x.k]){S.days[x.k].s=hh(x.s);S.days[x.k].e=hh(x.e);m[x.k].s=x.s;m[x.k].e=x.e}
+  });
+  pend=null;save();render();$("g4").classList.add("hide");gm("Wijzigingen overgenomen.");
+ };
+ prep();
+ if(G().cid)gm("Verbonden met Google Agenda. Tik op Nu synchroniseren om te controleren.");
+})();
 
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
 render();
