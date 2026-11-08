@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a73e8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Mijn Werkplanner</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mu:#6b7480;--ln:#e3e6ea;--ac:#1a73e8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121417;--card:#1c2025;--tx:#eceff3;--mu:#98a1ad;--ln:#2c3239;--ac:#6aa8ff}}
+:root[data-theme="dark"]{--bg:#121417;--card:#1c2025;--tx:#eceff3;--mu:#98a1ad;--ln:#2c3239;--ac:#6aa8ff}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:12px 12px 90px}
+h1{font-size:20px;margin:4px 0 10px}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:12px;margin-bottom:12px}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.nav div{text-align:center}.nav small{display:block;color:var(--mu);font-size:12px}
+button,.btn{font:inherit;border:1px solid var(--ln);background:var(--card);color:var(--tx);border-radius:10px;padding:8px 14px;text-decoration:none;cursor:pointer;display:inline-block}
+.pri,.sel{background:var(--ac)!important;color:#fff!important;border-color:var(--ac)!important}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{font-size:12px;color:var(--mu);text-align:center}
+.day{min-height:56px;border:1px solid var(--ln);border-radius:8px;padding:3px;font-size:12px;background:var(--bg);text-align:left;color:var(--tx)}
+.day.today{outline:2px solid var(--ac)}
+.day.sun .n,.day.hol .n{color:#d93025;font-weight:700}
+.tag{display:block;margin-top:3px;border-radius:5px;color:#fff;font-size:11px;font-weight:700;text-align:center;padding:1px 0}
+.sum{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sum div{background:var(--bg);border-radius:10px;padding:8px}
+.sum small{color:var(--mu);display:block;font-size:12px}
+.sum strong{font-size:17px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--ln);font-size:14px}
+.row:first-of-type{border-top:0}
+label{display:block;font-size:12px;color:var(--mu);margin:8px 0 2px}
+input{font:inherit;width:100%;padding:8px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);color:var(--tx)}
+input[type=checkbox]{width:auto}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.sheet{position:fixed;inset:auto 0 0 0;background:var(--card);border-top:1px solid var(--ln);border-radius:18px 18px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));max-width:560px;margin:0 auto;box-shadow:0 -6px 24px rgba(0,0,0,.25);display:none;max-height:85vh;overflow:auto}
+.sheet.open{display:block}
+.pick{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.tabs{display:flex;gap:6px;margin-bottom:10px}.tabs button{flex:1}
+.hide{display:none}
+p.note{font-size:12px;color:var(--mu);margin:8px 0 0}
+.trow{display:grid;grid-template-columns:50px 1fr 50px 54px 22px 30px;gap:5px;align-items:center;margin-top:6px}.g8{display:grid;grid-template-columns:24px repeat(7,1fr);gap:4px}.wk{font-size:11px;color:var(--mu);display:flex;align-items:center;justify-content:center}.ban{background:#fff4d6;color:#4a3b00;border:1px solid #f0d27a;border-radius:10px;padding:8px 10px;margin-bottom:8px;font-size:14px}.warn{color:#d93025;font-size:12px}.pick button.last{outline:2px dashed var(--ac)}
+</style>
+</head>
+<body>
+<h1>Mijn Werkplanner</h1>
+<div class="tabs"><button id="t1" class="sel">Rooster</button><button id="t3">Rapport</button><button id="t2">Instellingen</button></div>
+
+<div id="v1">
+  <div id="ban"></div>
+  <div class="card">
+    <div class="nav"><button id="prev">‹</button><div><b id="pt"></b><small id="pr"></small></div><button id="next">›</button></div>
+    <div class="g8" id="dow"></div>
+    <div class="g8" id="cal" style="margin-top:4px"></div>
+  </div>
+  <div class="card">
+    <div class="sum" id="sum"></div>
+    <p class="note" id="pd"></p>
+    <div id="slip"></div>
+  </div>
+  <div class="card"><b>Registraties in deze periode</b><div id="list"></div></div>
+  <div class="card" id="saldo"></div>
+  <div class="card"><b>Exporteren</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button id="e1">Google Agenda (CSV)</button><button id="e2">Excel-overzicht (CSV)</button></div><p class="note" id="exm">Exporteert de getoonde periode. Importeren in Google Agenda: calendar.google.com, Instellingen, Importeren en exporteren.</p></div>
+</div>
+
+<div id="v2" class="hide"><div class="card" id="set"></div></div>
+
+<div id="v3" class="hide">
+  <div class="card">
+    <div class="pick" id="rkind"></div>
+    <div id="rlb" style="text-align:center;font-weight:700;margin:8px 0"></div>
+    <div class="nav" id="rnv"><button id="rprev">‹ Vorige</button><button id="rnext">Volgende ›</button></div>
+    <div class="three hide" id="rcus"><div><label>Van</label><input type="date" id="rf"></div><div><label>Tot en met</label><input type="date" id="rt"></div></div>
+  </div>
+  <div class="card"><div class="sum" id="rsum"></div></div>
+  <div class="card"><b>Uren per week</b><div id="rch"></div></div>
+  <div class="card"><b>Per week</b><div id="rwk"></div></div>
+  <div class="card"><b>Per dienstsoort</b><div id="rty"></div></div>
+  <div class="card"><button id="rx">Rapport exporteren (CSV)</button><p class="note" id="rxm">Uren, toeslagen en bruto bedragen per dag, met een totaalregel. Opent in Excel.</p></div>
+</div>
+
+<div class="sheet" id="sh">
+  <div style="display:flex;align-items:center;justify-content:space-between"><button id="sp">‹</button><b id="shT"></b><button id="sn">›</button></div>
+  <div class="pick" id="pick"></div>
+  <div id="fShift">
+    <label style="color:var(--tx);font-weight:700">Gepland</label>
+    <div class="three"><div><label>Start</label><input type="time" id="fs"></div><div><label>Eind</label><input type="time" id="fe"></div><div><label>Pauze vanaf</label><input type="time" id="fb"></div></div>
+    <label style="color:var(--tx);font-weight:700">Werkelijk (optioneel)</label>
+    <div class="three"><div><label>Start</label><input type="time" id="as"></div><div><label>Eind</label><input type="time" id="ae"></div><div><label>Pauze vanaf</label><input type="time" id="ab"></div></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button id="sy" style="flex:1">✓ Gewerkt volgens planning</button><button id="sx" style="flex:1">✗ Niet gewerkt</button></div>
+  </div>
+  <div id="fAbs" class="hide"><label>Uren op deze dag</label><input type="number" id="fh" min="0" step="0.25"></div>
+  <div style="display:flex;gap:8px;margin-top:12px">
+    <a class="btn" id="gc" target="_blank" rel="noopener" style="flex:1;text-align:center">Google Agenda</a>
+    <button id="rp" style="flex:1">Herhaal 4 wkn</button><button class="pri" id="ok" style="flex:1">Klaar</button>
+  </div>
+</div>
+
+<script>
+var COL=["#d93025","#0b8043","#8e24aa","#039be5","#00897b","#6d4c41","#c2185b","#546e7a"];
+var BASE={PO:"#f4b400",PA:"#e8710a",PN:"#5b4bd5"};
+var DEF={PO:{s:"05:30",e:"14:30",bs:"10:00"},PA:{s:"14:00",e:"23:00",bs:"18:00"},PN:{s:"22:30",e:"06:00",bs:"01:00"},pause:30,remOff:30,rate:0,p50:50,p100:100,extra:"",
+ types:[{c:"ZIE",n:"Ziekte",paid:true,h:8,col:COL[0]},{c:"VAK",n:"Vakantie",paid:true,h:8,col:COL[1]},{c:"ADV",n:"ADV",paid:true,h:8,col:COL[2]},{c:"CUR",n:"Cursus",paid:true,h:8,col:COL[3]},{c:"BD",n:"Betaald vrij",paid:true,h:8,col:COL[4]},{c:"OV",n:"Overig",paid:false,h:8,col:COL[7]}]};
+var S={set:JSON.parse(JSON.stringify(DEF)),days:{}};
+try{var raw=localStorage.getItem("diensten2");if(raw){var o=JSON.parse(raw);if(o&&o.set&&o.days)S=o}}catch(e){}
+function save(){try{localStorage.setItem("diensten2",JSON.stringify(S))}catch(e){}}
+var MN=["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"],DN=["Zo","Ma","Di","Wo","Do","Vr","Za"];
+function pad(n){return String(n).padStart(2,"0")}
+function key(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
+function pk(k){var p=k.split("-");return new Date(+p[0],+p[1]-1,+p[2])}
+function addD(d,n){return new Date(d.getFullYear(),d.getMonth(),d.getDate()+n)}
+function eur(n){return "€ "+n.toFixed(2).replace(".",",")}
+function hm(m){return (m/60).toFixed(2).replace(".",",")}
+function fd(d){return d.getDate()+" "+MN[d.getMonth()]}
+function isShift(t){return t==="PO"||t==="PA"||t==="PN"}
+function typ(t){return S.set.types.filter(function(x){return x.c===t})[0]}
+function colOf(t){return BASE[t]||(typ(t)||{}).col||"#546e7a"}
+
+// Feestdagen
+var HC={};
+function hols(y){
+  if(HC[y])return HC[y];
+  var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;
+  var E=new Date(y,mo-1,da),o={};
+  [new Date(y,0,1),addD(E,-2),E,addD(E,1),addD(E,39),addD(E,49),addD(E,50),new Date(y,11,25),new Date(y,11,26)].forEach(function(x){o[key(x)]=1});
+  var kd=new Date(y,3,27);if(kd.getDay()===0)kd=new Date(y,3,26);o[key(kd)]=1;
+  if(y%5===0)o[key(new Date(y,4,5))]=1; // Bevrijdingsdag: alleen in lustrumjaren
+  return HC[y]=o;
+}
+function isHol(k){if(hols(+k.slice(0,4))[k])return true;return (S.set.extra||"").indexOf(k)>-1}
+
+// Betaalperiodes: periode 1 start op maandag van ISO-week 1; 13 periodes
+function wk1(y){var j=new Date(y,0,4);return addD(j,-((j.getDay()+6)%7))}
+function prange(y,n){var st=addD(wk1(y),28*(n-1));return{st:st,en:n<13?addD(st,27):addD(wk1(y+1),-1)}}
+function pfor(d){for(var y=d.getFullYear()+1;;y--){var w=wk1(y);if(d>=w)return{y:y,n:Math.min(13,Math.floor(Math.round((d-w)/864e5)/28)+1)}}}
+var cp=pfor(new Date());
+
+function cfg(k){
+  var d=S.days[k];if(!d)return null;
+  if(isShift(d.t)){var b=S.set[d.t];return{t:d.t,s:d.s||b.s,e:d.e||b.e,bs:d.bs||b.bs,a:d.a||null,st:d.st}}
+  var ty=typ(d.t)||{paid:false,h:0};
+  return{t:d.t,abs:true,h:d.h!=null?d.h:ty.h,paid:ty.paid}
+}
+// Rekent per minuut: pauze eraf, hoogste toeslag (feestdag 100% > zondag/nacht 50%)
+function calc(k,c,act){
+  var r=+S.set.rate||0;
+  if(c.abs)return{abs:true,tot:c.h*60,n0:0,n50:0,n100:0,pay:c.paid?c.h*r:0,h:c.h};
+  if(act&&c.st==="niet")return{tot:0,n0:0,n50:0,n100:0,pay:0};
+  var s=c.s,e=c.e,bs=c.bs;
+  if(act&&c.a){s=c.a.s||s;e=c.a.e||e;bs=c.a.b||bs}
+  var d=pk(k),st=new Date(d);
+  if(c.t==="PN")st.setDate(st.getDate()-1);
+  var a=s.split(":"),b=e.split(":"),q=bs.split(":");
+  st.setHours(+a[0],+a[1],0,0);
+  var en=new Date(st);en.setHours(+b[0],+b[1],0,0);if(en<=st)en.setDate(en.getDate()+1);
+  var b1=new Date(st);b1.setHours(+q[0],+q[1],0,0);if(b1<st)b1.setDate(b1.getDate()+1);
+  var b2=new Date(b1.getTime()+(+S.set.pause||0)*6e4);
+  var n0=0,n50=0,n100=0,ld=-1,hol=false,sun=false;
+  for(var t=new Date(st);t<en;t=new Date(t.getTime()+6e4)){
+    if(t>=b1&&t<b2)continue;
+    if(t.getDate()!==ld){ld=t.getDate();hol=isHol(key(t));sun=t.getDay()===0}
+    var h=t.getHours();
+    if(hol)n100++;else if(sun||h<6||h>=22)n50++;else n0++;
+  }
+  var pay=(n0*r+n50*r*(1+S.set.p50/100)+n100*r*(1+S.set.p100/100))/60;
+  return{st:st,en:en,tot:n0+n50+n100,n0:n0,n50:n50,n100:n100,pay:pay};
+}
+function gcal(k,c,r){
+  function f(x){return x.getFullYear()+pad(x.getMonth()+1)+pad(x.getDate())+"T"+pad(x.getHours())+pad(x.getMinutes())+"00"}
+  var nm=(typ(c.t)||{}).n||c.t,dt;
+  if(c.abs){var d=pk(k);dt=k.split("-").join("")+"/"+key(addD(d,1)).split("-").join("")}else dt=f(r.st)+"/"+f(r.en);
+  return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent("Dienst "+nm)+"&dates="+dt+"&ctz=Europe%2FAmsterdam";
+}
+
+function isoWk(d){var t=new Date(d.getFullYear(),d.getMonth(),d.getDate());t.setDate(t.getDate()+3-((t.getDay()+6)%7));var w=new Date(t.getFullYear(),0,4);return 1+Math.round(((t-w)/864e5-3+((w.getDay()+6)%7))/7)}
+function $(i){return document.getElementById(i)}
+function render(){
+  var R=prange(cp.y,cp.n),today=new Date(),tk=key(today),tm=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  $("pt").textContent="Periode "+cp.n+" · "+cp.y;
+  $("pr").textContent=fd(R.st)+" – "+fd(R.en)+" ("+(Math.round((R.en-R.st)/864e5)+1)/7+" weken)";
+  var h="",L="",W=0,V=0,Wa=0,N50=0,N100=0,P=0,Pa=0,pe=null,k0=key(addD(R.st,-1)),c0=cfg(k0);
+  if(c0&&!c0.abs)pe=calc(k0,c0,false).en;
+  for(var d=new Date(R.st);d<=R.en;d=addD(d,1)){
+    var k=key(d),c=cfg(k),ov=false;
+    if(d.getDay()===1)h+='<div class="wk">'+isoWk(d)+"</div>";
+    var p=null,a=null;
+    if(c){p=calc(k,c,false);a=calc(k,c,true);if(!c.abs){if(pe&&p.st<pe)ov=true;pe=p.en}}
+    h+='<button class="day'+(k===tk?" today":"")+(d.getDay()===0?" sun":"")+(isHol(k)?" hol":"")+'" data-k="'+k+'"><span class="n">'+d.getDate()+(d.getDate()===1?" "+MN[d.getMonth()]:"")+"</span>"+(c?'<span class="tag" style="background:'+colOf(c.t)+'">'+c.t+(ov?" ⚠":"")+"</span>":"")+"</button>";
+    if(c){
+      if(c.abs){if(c.paid)V+=p.tot}else{W+=p.tot;Wa+=a.tot;N50+=a.n50;N100+=a.n100}
+      P+=p.pay;Pa+=a.pay;
+      var tx=c.abs?c.h+" u":c.s+"–"+c.e+" · "+hm(p.tot)+" u"+(c.a||c.st==="niet"?" (werkelijk "+hm(a.tot)+")":"");
+      L+='<div class="row"><span><b style="color:'+colOf(c.t)+'">'+c.t+"</b> "+DN[d.getDay()]+" "+fd(d)+" · wk "+isoWk(d)+"<br><small>"+tx+"</small>"+(ov?'<br><span class="warn">⚠ overlapt met vorige dienst</span>':"")+'</span><span style="text-align:right">'+eur(p.pay)+'<br><a href="'+gcal(k,c,p)+'" target="_blank" rel="noopener">＋Agenda</a></span></div>';
+    }
+  }
+  $("cal").innerHTML=h;
+  $("sum").innerHTML=
+   '<div><small>Gewerkt (gepland)</small><strong>'+hm(W)+' u</strong></div><div><small>Gewerkt (werkelijk)</small><strong>'+hm(Wa)+' u</strong></div>'+
+   '<div><small>Betaald verlof</small><strong>'+hm(V)+' u</strong></div><div><small>Toeslaguren 50% / 100%</small><strong>'+hm(N50)+' / '+hm(N100)+'</strong></div>'+
+   '<div><small>Bruto (gepland)</small><strong>'+eur(P)+'</strong></div><div><small>Bruto (werkelijk)</small><strong>'+eur(Pa)+'</strong></div>';
+  var pay=addD(R.en,8),stt=today>pay?"uitbetaald":today>R.en?"afgesloten":today>=R.st?"lopend":"gepland";
+  $("pd").textContent="Verwachte betaaldag: "+DN[pay.getDay()]+" "+fd(pay)+" "+pay.getFullYear()+" · status: "+stt+". Indicatie, geen loonstrook.";
+  // Loonstrookcontrole
+  var sl=(S.slip||{})[cp.y+"-"+cp.n]||{},sh='<label style="color:var(--tx);font-weight:700;font-size:14px;margin-top:14px">Loonstrookcontrole</label><div class="three"><div><label>Bruto loonstrook (€)</label><input type="number" step="0.01" id="sb" value="'+(sl.b!=null?sl.b:"")+'"></div><div><label>Uren loonstrook</label><input type="number" step="0.01" id="su" value="'+(sl.u!=null?sl.u:"")+'"></div></div>';
+  if(sl.b!=null)sh+='<p class="note">Bruto: loonstrook '+eur(sl.b)+" tegenover app "+eur(Pa)+" → verschil "+eur(sl.b-Pa)+"</p>";
+  if(sl.u!=null)sh+='<p class="note">Uren: loonstrook '+hm(sl.u*60)+" tegenover app "+hm(Wa+V)+" → verschil "+hm(sl.u*60-(Wa+V))+" u</p>";
+  $("slip").innerHTML=sh;
+  var sv=function(){S.slip=S.slip||{};S.slip[cp.y+"-"+cp.n]={b:$("sb").value===""?undefined:+$("sb").value,u:$("su").value===""?undefined:+$("su").value};save();render()};
+  $("sb").onchange=sv;$("su").onchange=sv;
+  $("list").innerHTML=L||'<p class="note">Nog niets gepland. Tik op een dag.</p>';
+  // Saldo
+  var sd="";
+  S.set.types.forEach(function(x){if(x.sal==null||x.sal==="")return;var u=0;for(var kk in S.days){if(S.days[kk].t===x.c)u+=cfg(kk).h}
+    sd+='<div class="row"><span><b style="color:'+colOf(x.c)+'">'+x.c+"</b> "+x.n+'</span><span style="text-align:right">'+(x.sal-u).toFixed(2).replace(".",",")+' u over<br><small>beginsaldo '+x.sal+", gepland/opgenomen "+u+"</small></span></div>"});
+  $("saldo").innerHTML="<b>Saldo</b>"+(sd||'<p class="note">Vul bij Instellingen een beginsaldo (uren) in bij een type, bijvoorbeeld VAK of ADV.</p>');
+  // Meldingen (in de app)
+  var B="",np=pfor(today),pv=np.n>1?{y:np.y,n:np.n-1}:{y:np.y-1,n:13},tc=cfg(tk);
+  if(tc&&!tc.abs&&!tc.a&&!tc.st&&calc(tk,tc,false).en<today)B+='<div class="ban">Heb je vandaag volgens planning gewerkt? Tik op vandaag om je werkelijke tijden in te vullen.</div>';
+  [pv,np].forEach(function(q){var r=prange(q.y,q.n),e=Math.round((r.en-tm)/864e5),b=Math.round((addD(r.en,8)-tm)/864e5);
+    if(e>=0&&e<=3)B+='<div class="ban">Periode '+q.n+" sluit "+(e===0?"vandaag":"over "+e+" dag(en)")+".</div>";
+    if(b>=0&&b<=3)B+='<div class="ban">Betaaldag periode '+q.n+" is "+(b===0?"vandaag":"over "+b+" dag(en)")+".</div>"});
+  $("ban").innerHTML=B;
+  Array.prototype.forEach.call(document.querySelectorAll(".day"),function(b){b.onclick=function(){openSheet(b.getAttribute("data-k"))}});
+}
+document.getElementById("dow").innerHTML=["Wk","Ma","Di","Wo","Do","Vr","Za","Zo"].map(function(x){return '<div class="dow">'+x+"</div>"}).join("");
+document.getElementById("prev").onclick=function(){cp=cp.n>1?{y:cp.y,n:cp.n-1}:{y:cp.y-1,n:13};render()};
+document.getElementById("next").onclick=function(){cp=cp.n<13?{y:cp.y,n:cp.n+1}:{y:cp.y+1,n:1};render()};
+
+var sel=null;
+function go(k){sel=k;var d=pk(k);$("shT").textContent=DN[d.getDay()]+" "+fd(d)+" "+d.getFullYear()+" · wk "+isoWk(d)+(isHol(k)?" · feestdag":"");var pf=pfor(d);cp=pf;fillSheet();render()}
+function openSheet(k){go(k);$("sh").classList.add("open")}
+function fillSheet(){
+  var c=cfg(sel),pc=$("pick"),ts=["PO","PA","PN"].concat(S.set.types.map(function(x){return x.c})).concat(["Vrij"]);
+  pc.innerHTML=ts.map(function(t){return '<button data-t="'+t+'" class="'+((c&&c.t===t)||(!c&&t==="Vrij")?"sel":(S.last===t?"last":""))+'">'+t+"</button>"}).join("");
+  Array.prototype.forEach.call(pc.children,function(b){b.onclick=function(){var t=b.getAttribute("data-t");if(t==="Vrij")delete S.days[sel];else S.days[sel]={t:t};S.last=t;save();go(key(addD(pk(sel),1)))}});
+  $("fShift").classList.toggle("hide",!c||c.abs);$("fAbs").classList.toggle("hide",!c||!c.abs);
+  if(c&&!c.abs){$("fs").value=c.s;$("fe").value=c.e;$("fb").value=c.bs;var a=c.a||{};$("as").value=a.s||"";$("ae").value=a.e||"";$("ab").value=a.b||""}
+  if(c&&c.abs)$("fh").value=c.h;
+  $("sy").classList.toggle("sel",!!c&&c.st==="ja");$("sx").classList.toggle("sel",!!c&&c.st==="niet");
+  var g=$("gc");if(c){g.href=gcal(sel,c,calc(sel,c,false));g.style.opacity=1}else{g.removeAttribute("href");g.style.opacity=.4}
+}
+function edit(){
+  var d=S.days[sel];if(!d)return;
+  if(isShift(d.t)){d.s=$("fs").value||undefined;d.e=$("fe").value||undefined;d.bs=$("fb").value||undefined;
+    if($("as").value||$("ae").value||$("ab").value)d.a={s:$("as").value||undefined,e:$("ae").value||undefined,b:$("ab").value||undefined};else delete d.a;if(d.a&&d.st==="niet")d.st="ja"}
+  else d.h=$("fh").value===""?undefined:+$("fh").value;
+  save();render();var c=cfg(sel);$("gc").href=gcal(sel,c,calc(sel,c,false));
+}
+["fs","fe","fb","as","ae","ab","fh"].forEach(function(i){$(i).onchange=edit});
+$("sy").onclick=function(){var d=S.days[sel];if(!d||!isShift(d.t))return;d.st="ja";delete d.a;save();fillSheet();render()};
+$("sx").onclick=function(){var d=S.days[sel];if(!d||!isShift(d.t))return;d.st="niet";save();fillSheet();render()};
+$("ok").onclick=function(){$("sh").classList.remove("open")};
+
+function tab(n){$("v1").classList.toggle("hide",n!==1);$("v2").classList.toggle("hide",n!==2);$("t1").classList.toggle("sel",n===1);$("t2").classList.toggle("sel",n===2);$("v3").classList.toggle("hide",n!==3);$("t3").classList.toggle("sel",n===3);$("sh").classList.remove("open");if(n===2)settings();else if(n===3)report();else render()}
+$("t1").onclick=function(){tab(1)};$("t2").onclick=function(){tab(2)};$("t3").onclick=function(){tab(3)};
+
+function settings(){
+  var h="<b>Standaard diensttijden</b>";
+  ["PO","PA","PN"].forEach(function(t){var s=S.set[t];
+    h+='<label style="margin-top:12px;color:var(--tx);font-weight:700;font-size:14px">'+t+'</label><div class="three"><div><label>Start</label><input type="time" data-k="'+t+'.s" value="'+s.s+'"></div><div><label>Eind</label><input type="time" data-k="'+t+'.e" value="'+s.e+'"></div><div><label>Pauze vanaf</label><input type="time" data-k="'+t+'.bs" value="'+s.bs+'"></div></div>'});
+  h+='<b style="display:block;margin-top:16px">Salaris</b><div class="three"><div><label>Uurloon (€)</label><input type="number" min="0" step="0.01" data-k="rate" value="'+S.set.rate+'"></div><div><label>Nacht/zondag %</label><input type="number" min="0" data-k="p50" value="'+S.set.p50+'"></div><div><label>Feestdag %</label><input type="number" min="0" data-k="p100" value="'+S.set.p100+'"></div></div>';
+  h+='<div class="three"><div><label>Pauze (min)</label><input type="number" min="0" step="5" data-k="pause" value="'+S.set.pause+'"></div></div>';
+  if(window.Android)h+='<div class="three"><div><label>Melding na einde dienst (min, 0 = uit)</label><input type="number" min="0" step="5" data-k="remOff" value="'+(S.set.remOff==null?30:S.set.remOff)+'"></div></div>';
+  h+='<label>Extra feestdagen (JJJJ-MM-DD, gescheiden door spatie)</label><input type="text" data-k="extra" value="'+S.set.extra+'">';
+  h+='<b style="display:block;margin-top:16px">Soorten registraties</b><div class="trow"><small>Code</small><small>Naam</small><small>Uren/dag</small><small>Saldo</small><small>€</small><small></small></div>';
+  S.set.types.forEach(function(x,i){h+='<div class="trow"><input data-t="'+i+'.c" value="'+x.c+'"><input data-t="'+i+'.n" value="'+x.n+'"><input type="number" step="0.25" data-t="'+i+'.h" value="'+x.h+'"><input type="number" step="0.25" data-t="'+i+'.sal" value="'+(x.sal!=null?x.sal:"")+'"><input type="checkbox" data-t="'+i+'.paid"'+(x.paid?" checked":"")+'><button data-del="'+i+'" style="padding:4px 8px">✕</button></div>'});
+  h+='<button id="addT" style="margin-top:10px">+ Nieuw type</button><p class="note">Betaald (€) = uren worden uitbetaald tegen uurloon, zonder toeslag. Toeslag: ma–za 22:00–06:00 en zondag 50%, feestdag 100%; de hoogste geldt, nooit gestapeld.</p>';
+  if(!window.Android)h+='<b style="display:block;margin-top:16px">Back-up</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button id="bk1">Back-up opslaan</button><button id="bk2">Back-up laden</button><button id="bk3">Delen: Drive of OneDrive</button><input type="file" id="bkf" accept=".json,application/json" class="hide"></div><p class="note" id="bkm">Bewaar af en toe een back-up: de gegevens staan alleen op dit toestel.</p>';
+  var box=$("set");box.innerHTML=h;
+  if(!window.Android){$("bk1").onclick=function(){dl("werkplanner-backup.json",JSON.stringify(S),false,"bkm")};$("bk2").onclick=function(){$("bkf").click()};
+  $("bk3").onclick=function(){var txt=JSON.stringify(S),m=$("bkm");
+   function ts(t,n){var f=new File([txt],n,{type:t});return navigator.canShare&&navigator.canShare({files:[f]})?navigator.share({files:[f],title:"Werkplanner back-up"}):null}
+   try{var pr=ts("application/json","werkplanner-backup.json")||ts("text/plain","werkplanner-backup.txt");
+    if(pr)pr.then(function(){m.textContent="Kies in het deelmenu Google Drive of OneDrive."}).catch(function(e){m.textContent=e&&e.name==="AbortError"?"Delen geannuleerd.":"Delen is niet gelukt."});
+    else m.textContent="Delen wordt hier niet ondersteund. Gebruik Back-up opslaan en upload het bestand zelf naar Drive of OneDrive."}
+   catch(e){m.textContent="Delen is niet gelukt."}};$("bkf").onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var o=JSON.parse(r.result);if(!o||!o.set||!o.days)throw 0;S=o;save();$("bkm").textContent="Back-up geladen."}catch(e){$("bkm").textContent="Dit is geen geldige back-up."}};r.readAsText(f)}}
+  Array.prototype.forEach.call(box.querySelectorAll("input[data-k]"),function(i){i.onchange=function(){
+    var k=i.getAttribute("data-k").split("."),v=i.type==="number"?+i.value:i.value;
+    if(k.length===2)S.set[k[0]][k[1]]=v;else S.set[k[0]]=v;save()}});
+  Array.prototype.forEach.call(box.querySelectorAll("input[data-t]"),function(i){i.onchange=function(){
+    var k=i.getAttribute("data-t").split("."),t=S.set.types[+k[0]],v=i.type==="checkbox"?i.checked:i.type==="number"?+i.value:i.value;
+    if(k[1]==="c"){v=v.toUpperCase().slice(0,4);if(!v||isShift(v)){i.value=t.c;return}var old=t.c;for(var dk in S.days)if(S.days[dk].t===old)S.days[dk].t=v}
+    if(k[1]==="sal"&&i.value==="")v=undefined;t[k[1]]=v;save()}});
+  Array.prototype.forEach.call(box.querySelectorAll("button[data-del]"),function(b){b.onclick=function(){S.set.types.splice(+b.getAttribute("data-del"),1);save();settings()}});
+  $("addT").onclick=function(){var n=S.set.types.length+1;S.set.types.push({c:"X"+n,n:"Nieuw type",paid:true,h:8,col:COL[n%COL.length]});save();settings()};
+}
+$("sp").onclick=function(){go(key(addD(pk(sel),-1)))};
+$("sn").onclick=function(){go(key(addD(pk(sel),1)))};
+$("rp").onclick=function(){var d=S.days[sel];if(!d)return;var dt=pk(sel);for(var i=1;i<=4;i++){var cp2=JSON.parse(JSON.stringify(d));delete cp2.a;S.days[key(addD(dt,7*i))]=cp2}save();render();$("rp").textContent="✓ gekopieerd";setTimeout(function(){$("rp").textContent="Herhaal 4 wkn"},1500)};
+function dl(name,text,bom,mid){
+  var m=$(mid||"exm");
+  if(!(window.claude&&claude.use)){try{var bl=new Blob([(bom?"\ufeff":"")+text],{type:"text/csv"}),u=URL.createObjectURL(bl),an=document.createElement("a");an.href=u;an.download=name;document.body.appendChild(an);an.click();an.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);m.textContent="Bestand gedownload."}catch(e){m.textContent="Opslaan is hier niet beschikbaar."}return}
+  claude.use("downloads").then(function(d){
+    if(!d){m.textContent="Opslaan is in deze weergave niet beschikbaar.";return}
+    return d.save({filename:name,data:(bom?"\ufeff":"")+text}).then(function(){m.textContent="Bestand opgeslagen."}).catch(function(e){m.textContent=e&&e.code==="declined"?"Opslaan geannuleerd.":"Opslaan is niet gelukt."});
+  });
+}
+function t12(d){var h=d.getHours();return (h%12||12)+":"+pad(d.getMinutes())+" "+(h<12?"AM":"PM")}
+function d12(d){return pad(d.getMonth()+1)+"/"+pad(d.getDate())+"/"+d.getFullYear()}
+function cs(a,sep){return a.map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(sep)}
+function eachDay(f){var R=prange(cp.y,cp.n);for(var d=new Date(R.st);d<=R.en;d=addD(d,1)){var k=key(d),c=cfg(k);if(c)f(d,k,c)}}
+$("e1").onclick=function(){var L=["Subject,Start Date,Start Time,End Date,End Time,All Day Event,Description,Location"];
+  eachDay(function(d,k,c){var nm=(typ(c.t)||{}).n||c.t,p=calc(k,c,false);
+    if(c.abs)L.push(cs(["Dienst "+nm,d12(d),"",d12(d),"","True","",""],","));
+    else L.push(cs(["Dienst "+c.t,d12(p.st),t12(p.st),d12(p.en),t12(p.en),"False","Pauze vanaf "+c.bs,""],","))});
+  dl("werkrooster-periode-"+cp.n+"-"+cp.y+".csv",L.join("\r\n"),false)};
+$("e2").onclick=function(){var L=[cs(["Datum","Week","Dienst","Start","Eind","Uren gepland","Uren werkelijk","Uren 50%","Uren 100%","Bruto gepland","Bruto werkelijk"],";")],n=function(x){return x.toFixed(2).replace(".",",")};
+  eachDay(function(d,k,c){var p=calc(k,c,false),a=calc(k,c,true);
+    L.push(cs([k,isoWk(d),c.t,c.abs?"":c.s,c.abs?"":c.e,hm(p.tot),hm(a.tot),hm(a.n50),hm(a.n100),n(p.pay),n(a.pay)],";"))});
+  dl("uren-periode-"+cp.n+"-"+cp.y+".csv",L.join("\r\n"),true)};
+// ---- Rapporten: week, 4 weken (betaalperiode), kwartaal of eigen periode
+var rp={k:"week",off:0,f:"",t:""};
+function rrange(){
+ var td=new Date(),tm=new Date(td.getFullYear(),td.getMonth(),td.getDate()),s,e,lb;
+ if(rp.k==="week"){s=addD(tm,-((tm.getDay()+6)%7)+7*rp.off);e=addD(s,6);lb="Week "+isoWk(s)+" · "+fd(s)+" – "+fd(e)+" "+e.getFullYear()}
+ else if(rp.k==="per"){var p=pfor(tm),t=p.y*13+(p.n-1)+rp.off,y=Math.floor(t/13),n=t-y*13+1,r=prange(y,n);s=r.st;e=r.en;lb="Periode "+n+" · "+y+" ("+fd(s)+" – "+fd(e)+")"}
+ else if(rp.k==="kw"){var qi=Math.floor(tm.getMonth()/3)+rp.off;s=new Date(tm.getFullYear(),3*qi,1);e=new Date(s.getFullYear(),s.getMonth()+3,0);lb="Kwartaal "+(Math.floor(s.getMonth()/3)+1)+" · "+s.getFullYear()}
+ else{s=rp.f?pk(rp.f):new Date(tm.getFullYear(),tm.getMonth(),1);e=rp.t?pk(rp.t):tm;if(e<s)e=s;if(Math.round((e-s)/864e5)>799)e=addD(s,799);lb=fd(s)+" "+s.getFullYear()+" – "+fd(e)+" "+e.getFullYear()}
+ return{s:s,e:e,lb:lb}
+}
+function agg(R){
+ var o={W:0,Wa:0,V:0,N50:0,N100:0,P:0,Pa:0,n:0,wk:{},ty:{},rows:[]},cnt=0;
+ for(var d=new Date(R.s);d<=R.e;d=addD(d,1)){
+  if(++cnt>800)break;
+  var k=key(d),c=cfg(k);if(!c)continue;
+  var p=calc(k,c,false),a=calc(k,c,true),ms=addD(d,-((d.getDay()+6)%7)),mk=key(ms),
+   w=o.wk[mk]||(o.wk[mk]={s:ms,W:0,Wa:0,V:0,Pa:0,N0:0,N50:0,N100:0}),t=o.ty[c.t]||(o.ty[c.t]={n:0,m:0});
+  t.n++;
+  if(c.abs){t.m+=p.tot;if(c.paid){o.V+=p.tot;w.V+=p.tot}}
+  else{o.n++;o.W+=p.tot;o.Wa+=a.tot;o.N50+=a.n50;o.N100+=a.n100;w.W+=p.tot;w.Wa+=a.tot;w.N0+=a.n0;w.N50+=a.n50;w.N100+=a.n100;t.m+=a.tot}
+  o.P+=p.pay;o.Pa+=a.pay;w.Pa+=a.pay;o.rows.push([d,k,c,p,a]);
+ }
+ return o;
+}
+function chart(o){
+ var ks=Object.keys(o.wk).sort(),box=$("rch");
+ if(!ks.length){box.innerHTML='<p class="note">Geen gegevens in deze periode.</p>';return}
+ var bw=30,gp=12,H=190,top=16,bot=26,L=34,mx=60;
+ ks.forEach(function(m){var w=o.wk[m];mx=Math.max(mx,w.N0+w.N50+w.N100)});
+ var mh=Math.max(5,Math.ceil(mx/60/5)*5),sc=(H-top-bot)/(mh*60),W=L+ks.length*(bw+gp)+gp,sv="";
+ [0,mh/2,mh].forEach(function(v){var y=H-bot-v*60*sc;sv+='<line x1="'+L+'" x2="'+W+'" y1="'+y+'" y2="'+y+'" style="stroke:var(--ln)"/><text x="'+(L-4)+'" y="'+(y+4)+'" text-anchor="end" font-size="10" style="fill:var(--mu)">'+v+'</text>'});
+ ks.forEach(function(m,i){var w=o.wk[m],x=L+gp+i*(bw+gp),y=H-bot,tot=w.N0+w.N50+w.N100;
+  [[w.N0,"#1a73e8"],[w.N50,"#e8710a"],[w.N100,"#d93025"]].forEach(function(q){if(q[0]>0){var h=q[0]*sc;y-=h;sv+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="2" fill="'+q[1]+'"/>'}});
+  sv+='<text x="'+(x+bw/2)+'" y="'+(y-4)+'" text-anchor="middle" font-size="10" style="fill:var(--tx)">'+(tot?Math.round(tot/6)/10:"")+'</text><text x="'+(x+bw/2)+'" y="'+(H-bot+14)+'" text-anchor="middle" font-size="10" style="fill:var(--mu)">'+isoWk(w.s)+'</text>'});
+ box.innerHTML='<div style="overflow-x:auto"><svg width="'+W+'" height="'+H+'" role="img" aria-label="Gewerkte uren per week, verdeeld in normaal, 50 procent en 100 procent toeslag">'+sv+'</svg></div><div class="note" style="display:flex;gap:12px;flex-wrap:wrap"><span><b style="color:#1a73e8">■</b> normaal</span><span><b style="color:#e8710a">■</b> 50%</span><span><b style="color:#d93025">■</b> 100%</span><span>uren per weeknummer</span></div>';
+}
+function report(){
+ var kinds=[["week","Week"],["per","4 weken"],["kw","Kwartaal"],["eig","Eigen"]];
+ $("rkind").innerHTML=kinds.map(function(x){return '<button data-k="'+x[0]+'" class="'+(rp.k===x[0]?"sel":"")+'">'+x[1]+"</button>"}).join("");
+ Array.prototype.forEach.call($("rkind").children,function(b){b.onclick=function(){rp.k=b.getAttribute("data-k");rp.off=0;report()}});
+ var R=rrange(),o=agg(R);
+ $("rlb").textContent=R.lb;
+ $("rcus").classList.toggle("hide",rp.k!=="eig");$("rnv").classList.toggle("hide",rp.k==="eig");
+ $("rf").value=key(R.s);$("rt").value=key(R.e);
+ $("rsum").innerHTML=
+  '<div><small>Diensten</small><strong>'+o.n+'</strong></div><div><small>Uren gepland</small><strong>'+hm(o.W)+' u</strong></div>'+
+  '<div><small>Uren werkelijk</small><strong>'+hm(o.Wa)+' u</strong></div><div><small>Betaald verlof</small><strong>'+hm(o.V)+' u</strong></div>'+
+  '<div><small>Toeslaguren 50% / 100%</small><strong>'+hm(o.N50)+' / '+hm(o.N100)+'</strong></div><div><small>Bruto werkelijk</small><strong>'+eur(o.Pa)+'</strong><small>gepland '+eur(o.P)+'</small></div>';
+ var wk=Object.keys(o.wk).sort().map(function(m){var w=o.wk[m];
+  return '<div class="row"><span><b>Wk '+isoWk(w.s)+'</b> · '+fd(w.s)+'<br><small>gepland '+hm(w.W)+' u'+(w.V?' · verlof '+hm(w.V)+' u':'')+'</small></span><span style="text-align:right">'+hm(w.Wa)+' u<br><small>toeslag '+eur((w.N50*S.set.p50+w.N100*S.set.p100)/100*(+S.set.rate||0)/60)+' · '+eur(w.Pa)+'</small></span></div>'}).join("");
+ $("rwk").innerHTML=wk||'<p class="note">Geen registraties in deze periode.</p>';
+ chart(o);
+ var ord=["PO","PA","PN"].concat(Object.keys(o.ty).filter(function(x){return !isShift(x)}).sort());
+ $("rty").innerHTML=ord.filter(function(x){return o.ty[x]}).map(function(x){var t=o.ty[x];
+  return '<div class="row"><span><b style="color:'+colOf(x)+'">'+x+'</b> '+(((typ(x)||{}).n)||"")+'</span><span>'+t.n+' × · '+hm(t.m)+' u</span></div>'}).join("")||'<p class="note">Geen registraties.</p>';
+}
+$("rprev").onclick=function(){rp.off--;report()};
+$("rnext").onclick=function(){rp.off++;report()};
+$("rf").onchange=function(){rp.f=$("rf").value;rp.t=$("rt").value;report()};
+$("rt").onchange=function(){rp.f=$("rf").value;rp.t=$("rt").value;report()};
+$("rx").onclick=function(){
+ var R=rrange(),o=agg(R),n=function(x){return x.toFixed(2).replace(".",",")},
+  L=[cs(["Datum","Week","Dienst","Start","Eind","Uren gepland","Uren werkelijk","Uren 50%","Uren 100%","Bruto gepland","Bruto werkelijk"],";")];
+ o.rows.forEach(function(r){var c=r[2];L.push(cs([r[1],isoWk(r[0]),c.t,c.abs?"":c.s,c.abs?"":c.e,hm(r[3].tot),hm(r[4].tot),hm(r[4].n50),hm(r[4].n100),n(r[3].pay),n(r[4].pay)],";"))});
+ L.push(cs(["TOTAAL","","","","",hm(o.W),hm(o.Wa),hm(o.N50),hm(o.N100),n(o.P),n(o.Pa)],";"));
+ dl("rapport-"+key(R.s)+"_"+key(R.e)+".csv",L.join("\r\n"),true,"rxm");
+};
+
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
+render();
+</script>
+</body>
+</html>
